@@ -1,0 +1,219 @@
+#%RAML 1.0
+title: audioLib
+version: v1
+baseUri: /
+
+types:
+  song: |
+    {
+      "type": "object",
+      "$schema": "http://json-schema.org/draft-03/schema",
+      "id": "http://jsonschema.net",
+      "required": true,
+      "properties": {
+        "songTitle": {
+          "type": "string",
+          "required": true
+        },
+        "artist": {
+        }
+        "albumId": {
+          "type": "string",
+          "required": true,
+          "minLength": 36,
+          "maxLength": 36
+        }
+      }
+    }
+resourceTypes:
+  collection:
+    description: Collection of available <<resourcePathName>> in Jukebox
+    get:
+      description: Get a list of <<resourcePathName>> based on the song title.
+      responses:
+        200:
+          body:
+            application/json:
+    post:
+      description: |
+        Add a new <<resourcePathName|!singularize>> to Jukebox.
+      queryParameters:
+        access_token:
+          description: "The access token provided by the authentication application"
+          example: AABBCCDD 
+          required: true
+          type: string
+      body:
+        application/json:
+          type: <<resourcePathName|!singularize>>
+      responses:
+        200:
+          body:
+            application/json:
+              example: |
+                { "message": "The <<resourcePathName|!singularize>> has been properly entered" }
+  collection-item:
+    description: Entity representing a <<resourcePathName|!singularize>>
+    get:
+      description: |
+        Get the <<resourcePathName|!singularize>>
+        with <<resourcePathName|!singularize>>Id =
+        {<<resourcePathName|!singularize>>Id}
+      responses:
+        200:
+          body:
+            application/json:
+        404:
+          body:
+            application/json:
+              example: |
+                {"message": "<<resourcePathName|!singularize>> not found" }
+traits:
+  searchable:
+    queryParameters:
+      query:
+        description: |
+          JSON array [{"field1","value1","operator1"},{"field2","value2","operator2"},...,{"fieldN","valueN","operatorN"}] <<description>>
+        example: |
+          <<example>>
+  orderable:
+    queryParameters:
+      orderBy:
+        description: |
+          Order by field: <<fieldsList>>
+        type: string
+        required: false
+      order:
+        description: Order
+        enum: [desc, asc]
+        default: desc
+        required: false
+  pageable:
+    queryParameters:
+      offset:
+        description: Skip over a number of elements by specifying an offset value for the query
+        type: integer
+        required: false
+        example: 20
+        default: 0
+      limit:
+        description: Limit the number of elements on the response
+        type: integer
+        required: false
+        example: 80
+        default: 10         
+/songs:
+  type:
+    collection:
+      exampleCollection: |
+        [
+          {
+            "songId": "550e8400-e29b-41d4-a716-446655440000",
+            "songTitle": "Get Lucky"
+          },
+          {
+            "songId": "550e8400-e29b-41d4-a716-446655440111",
+            "songTitle": "Loose yourself to dance"
+          },
+          {
+            "songId": "550e8400-e29b-41d4-a716-446655440222",
+            "songTitle": "Gio sorgio by Morodera"
+          }
+        ]
+      exampleItem: |
+        {
+          "songId": "550e8400-e29b-41d4-a716-446655440000",
+          "songTitle": "Get Lucky",
+          "albumId": "183100e3-0e2b-4404-a716-66104d440550"
+        }
+  get:
+    is: [searchable: {description: "with valid searchable fields: songTitle", example: "[\"songTitle\", \"Get L\", \"like\"]"}]
+  /{songId}:
+    type:
+      collection-item:
+        exampleItem: |
+          {
+            "songId": "550e8400-e29b-41d4-a716-446655440000",
+            "songTitle": "Get Lucky",
+            "duration": "6:07",
+            "artist": {
+              "artistId": "110e8300-e32b-41d4-a716-664400445500"
+              "artistName": "Daft Punk",
+              "imageURL": "http://travelhymns.com/wp-content/uploads/2013/06/random-access-memories1.jpg"
+            },
+            "album": {
+              "albumId": "183100e3-0e2b-4404-a716-66104d440550",
+              "albumName": "Random Access Memories",
+              "imageURL": "http://upload.wikimedia.org/wikipedia/en/a/a7/Random_Access_Memories.jpg"
+            }
+          }
+    /file-content:
+      description: The file to be reproduced by the client
+      get:
+        description: Get the file content
+        responses:
+          200:
+            body:
+              binary/octet-stream:
+                example: !include heybulldog.mp3
+      post:
+        description: |
+          Enters the file content for an existing song entity.
+
+          Use the "binary/octet-stream" content type to specify the content from any consumer (excepting web-browsers).
+          Use the "multipart-form/data" content type to upload a file which content will become the file-content
+        body:
+          binary/octet-stream:
+          multipart/form-data:
+            properties:
+              file:
+                description: The file to be uploaded
+                required: true
+                type: file
+  post:
+/artists:
+  /{artistId}:
+    /albums:
+      type:
+        collection:
+          exampleCollection: |
+          [
+            {
+              "albumId": "183100e3-0e2b-4404-a716-66104d440550",
+              "albumTitle": "Random Access Memories"
+            },
+            {
+              "albumId": "183100e3-0e2b-4404-a716-66104d440660",
+              "albumTitle": "Loose yourself to dance"
+            },
+            {
+              "albumId": "183100e3-0e2b-4404-a716-66104d440770",
+              "albumTitle": "Gio sorgio by Morodera"
+            }
+          ]
+          exampleItem: {}
+      description: Collection of albulms belonging to the artist
+      get:
+        description: Get a specific artist's albums list
+/albums:
+  /{albumId}:
+    /songs:
+      type:
+        readOnlyCollection:
+          exampleCollection: |
+            [
+              {
+                "songId": "550e8400-e29b-41d4-a716-446655440000",
+                "songTitle": "Get Lucky"
+              },
+              {
+                "songId": "550e8400-e29b-41d4-a716-446655440111",
+                "songTitle": "Loose yourself to dance"
+              },
+              {
+                "songId": "550e8400-e29b-41d4-a716-446655440222",
+                "songTitle": "Gio sorgio by Morodera"
+              }
+            ]
+      get:
+        description: Get the list of songs for the album with `albumId = {albumId}`
